@@ -1,9 +1,8 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Literal
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # Telegram
     bot_token: str
@@ -21,10 +20,6 @@ class Settings(BaseSettings):
     # Subscription
     sub_url: str
     sub_domain: str = ""
-
-    # Webhook
-    webhook_host: str
-    webhook_port: int = 8000
 
     # Database
     database_url: str = "sqlite+aiosqlite:///bot/db.sqlite3"

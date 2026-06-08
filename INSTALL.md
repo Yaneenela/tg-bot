@@ -5,18 +5,16 @@
 Что нужно иметь:
 - VPS с Ubuntu 22.04+ / Debian 11+
 - Установленный 3x-ui панель
-- Домен (для HTTPS подписки)
 - Доступ по SSH (root)
 
 ## 2. Настройка 3x-ui
 
 Зайди в веб-интерфейс панели:
 
-**A. Subscription Server**
+**A. Subscription Server** (если ещё не включён)
 - Настройки → Subscription → включить
-- Порт: `10882`
+- Порт: твой (по умолч. 10882)
 - Путь: `/sub/`
-- Если есть домен — укажи его в `Sub Domain`
 
 **B. API Token**
 - Настройки → Security → API Token
@@ -59,14 +57,14 @@ nano .env
 | Поле | Что писать |
 |------|-----------|
 | `BOT_TOKEN` | Токен от @BotFather (получить: `/newbot`) |
-| `XUI_URL` | `https://127.0.0.1:2053` (или твой IP) |
+| `XUI_URL` | `https://127.0.0.1:2053` (или твой IP/домен) |
 | `XUI_TOKEN` | Токен из 3x-ui (Settings → Security → API Token) |
 | `XUI_INSECURE=true` | Оставить `true`, если самоподписной сертификат |
 | `YOOKASSA_SHOP_ID` | Из личного кабинета ЮKassa |
 | `YOOKASSA_SECRET_KEY` | Секретный ключ ЮKassa |
 | `YOOKASSA_RETURN_URL` | `https://t.me/твой_бот` |
-| `SUB_URL` | `https://sub.твой-домен:10882/sub/` |
-| `WEBHOOK_HOST` | `https://sub.твой-домен` |
+| `SUB_URL` | Твоя существующая ссылка на подписку (до `/sub/`) |
+| `SUB_DOMAIN` | Необязательно, можно оставить пустым |
 | `ADMIN_IDS` | Твой telegram ID (узнать у @userinfobot) |
 
 Остальное можно не трогать.
@@ -116,79 +114,19 @@ systemctl status vpnbot
 journalctl -u vpnbot -f
 ```
 
-## 7. Настройка nginx + HTTPS (для подписки)
+## 7. Как работает оплата (без вебхуков)
 
-Если есть домен `sub.твой-домен`, направь его на IP сервера (A-запись).
+Бот **не требует** открытых портов или nginx для приёма платежей.
 
-```bash
-apt install -y nginx certbot python3-certbot-nginx
-```
+Схема:
+1. Пользователь нажимает «Оплатить» → бот создаёт платёж в ЮKassa → выдаёт ссылку
+2. Пользователь переходит по ссылке, оплачивает на сайте ЮKassa
+3. Бот **каждые 30 секунд** проверяет статус неоплаченных платежей через API ЮKassa
+4. Как только статус `succeeded` — бот активирует подписку и присылает ссылку
 
-Создай `/etc/nginx/sites-available/sub`:
+Никаких вебхуков, открытых портов, nginx, доменов для бота не нужно.
 
-```nginx
-server {
-    listen 80;
-    server_name sub.твой-домен;
-
-    location /sub/ {
-        proxy_pass http://127.0.0.1:10882;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-```bash
-# Включить сайт
-ln -sf /etc/nginx/sites-available/sub /etc/nginx/sites-enabled/
-
-# Получить SSL
-certbot --nginx -d sub.твой-домен --non-interactive --agree-tos -m admin@твой-домен
-
-# Перезапустить nginx
-systemctl restart nginx
-```
-
-Теперь ссылка на подписку будет:
-```
-https://sub.твой-домен/sub/SUBID
-```
-
-## 8. Настройка вебхука ЮKassa
-
-FastAPI слушает на `127.0.0.1:8000` — он не доступен снаружи.
-ЮKassa должен слать уведомления на внешний URL.
-
-**Вариант A — через nginx (рекомендую):**
-
-Добавь в тот же `/etc/nginx/sites-available/sub`:
-
-```nginx
-location /webhook/ {
-    proxy_pass http://127.0.0.1:8000;
-}
-```
-
-Потом:
-```bash
-systemctl reload nginx
-```
-
-В кабинете ЮKassa → Настройки → HTTP-уведомления:
-- URL: `https://sub.твой-домен/webhook/yookassa`
-- События: `payment.succeeded`
-
-**Вариант B — открыть порт 8000 (проще, но менее безопасно):**
-
-В `.env` поменяй `WEBHOOK_HOST` на IP сервера.
-В фаерволле открой порт 8000.
-
-В кабинете ЮKassa:
-- URL: `http://IP-сервера:8000/webhook/yookassa`
-
-## 9. Полезные команды
+## 8. Полезные команды
 
 ```bash
 # Перезапуск бота
@@ -209,7 +147,7 @@ systemctl status vpnbot
 systemctl stop vpnbot
 ```
 
-## 10. Структура .env (для проверки)
+## 9. Структура .env (для проверки)
 
 ```
 BOT_TOKEN=7234567890:AAH...
@@ -219,10 +157,8 @@ XUI_INSECURE=true
 YOOKASSA_SHOP_ID=123456
 YOOKASSA_SECRET_KEY=test_...
 YOOKASSA_RETURN_URL=https://t.me/твой_бот
-SUB_URL=https://sub.твой-домен/sub/
-SUB_DOMAIN=sub.твой-домен
-WEBHOOK_HOST=https://sub.твой-домен
-WEBHOOK_PORT=8000
+SUB_URL=https://твой-домен:2096/sub/
+SUB_DOMAIN=твой-домен
 DATABASE_URL=sqlite+aiosqlite:///bot/db.sqlite3
 PRICE_30D=100
 PRICE_60D=200

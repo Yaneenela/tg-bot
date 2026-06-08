@@ -51,3 +51,17 @@ async def get_payment_status(payment_id: str) -> str | None:
         return payment.status
     except Exception:
         return None
+
+
+async def get_payment(payment_id: str) -> dict | None:
+    if not YOOKASSA_AVAILABLE:
+        return None
+    try:
+        payment = YooPayment.find_one(payment_id)
+        return {
+            "id": payment.id,
+            "status": payment.status,
+            "metadata": dict(payment.metadata) if payment.metadata else {},
+        }
+    except Exception:
+        return None

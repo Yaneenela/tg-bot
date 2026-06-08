@@ -4,14 +4,11 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
-import uvicorn
 
 from bot.config import settings
 from bot.database import init_db
-from bot.xui import xui_client
-from bot.scheduler import start_scheduler, scheduler
+from bot.scheduler import start_scheduler
 from bot.handlers import start, purchase, subscriptions, admin
-from bot.web.app import web_app
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -71,25 +68,10 @@ async def main():
         )
         await callback.answer()
 
-    web_app.state.bot = bot
     start_scheduler(bot)
 
-    async def run_bot():
-        logger.info("Bot polling started")
-        await dp.start_polling(bot)
-
-    config = uvicorn.Config(
-        web_app,
-        host="127.0.0.1",
-        port=settings.webhook_port,
-        log_level="info",
-    )
-    server = uvicorn.Server(config)
-
-    await asyncio.gather(
-        run_bot(),
-        server.serve(),
-    )
+    logger.info("Bot polling started")
+    await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
