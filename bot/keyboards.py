@@ -70,6 +70,7 @@ def admin_menu() -> InlineKeyboardMarkup:
     builder.row(InlineKeyboardButton(text="👥 Пользователи", callback_data="admin_users:0"))
     builder.row(InlineKeyboardButton(text="💰 Платежи", callback_data="admin_payments:0"))
     builder.row(InlineKeyboardButton(text="📢 Рассылка", callback_data="admin_broadcast"))
+    builder.row(InlineKeyboardButton(text="🔍 Проверить подписки", callback_data="admin_check"))
     builder.row(InlineKeyboardButton(text="⚙️ Проверка сервера", callback_data="admin_server"))
     builder.row(InlineKeyboardButton(text="← Главное меню", callback_data="back_main"))
     return builder.as_markup()

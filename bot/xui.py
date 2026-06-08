@@ -1,4 +1,5 @@
 import uuid
+import json
 from datetime import datetime, timedelta
 from typing import Any
 import httpx
@@ -124,6 +125,48 @@ class XUIClient:
 
     async def delete_depleted(self, inbound_id: int) -> dict:
         data = await self._request("POST", f"/panel/api/inbounds/delDepletedClients/{inbound_id}")
+        return data
+
+    async def find_client_by_email(self, email: str) -> dict | None:
+        """Search for a client by email across all inbounds."""
+        inbounds = await self.get_inbounds()
+        for inbound in inbounds:
+            try:
+                settings_data = json.loads(inbound.get("settings", "{}"))
+                for client in settings_data.get("clients", []):
+                    if client.get("email") == email:
+                        return {
+                            "inbound_id": inbound["id"],
+                            "client": client,
+                        }
+            except (json.JSONDecodeError, KeyError):
+                continue
+        return None
+
+    async def xui_get_expiry_ms(self, email: str) -> int | None:
+        """Get client's expiryTime from 3x-ui by email."""
+        found = await self.find_client_by_email(email)
+        if found:
+            return found["client"].get("expiryTime")
+        return None
+
+    async def xui_update_expiry(self, inbound_id: int, client_id: str,
+                                 expiry_ms: int, devices: int) -> dict:
+        """Update only the expiry time of a client in 3x-ui."""
+        payload = {
+            "id": inbound_id,
+            "settings": {
+                "clients": [{
+                    "id": client_id,
+                    "limitIp": devices,
+                    "expiryTime": expiry_ms,
+                    "enable": True,
+                }]
+            },
+        }
+        data = await self._request(
+            "POST", f"/panel/api/inbounds/updateClient/{client_id}", json=payload
+        )
         return data
 
 

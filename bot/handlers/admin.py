@@ -214,3 +214,137 @@ async def admin_server(callback: types.CallbackQuery):
 
     await callback.message.edit_text(text, reply_markup=back_button("admin"))
     await callback.answer()
+
+
+@router.callback_query(F.data == "admin_check")
+async def admin_check(callback: types.CallbackQuery):
+    if not await is_admin(callback.from_user.id):
+        return await callback.answer("⛔", show_alert=True)
+
+    await callback.message.edit_text("🔍 Проверяю подписки... Подождите.")
+    await callback.answer()
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(Subscription).where(Subscription.is_active == True)
+        )
+        subs = result.scalars().all()
+
+    if not subs:
+        await callback.message.edit_text(
+            "✅ Активных подписок нет, расхождений нет.",
+            reply_markup=back_button("admin"),
+        )
+        return
+
+    mismatches = []
+    checked = 0
+    errors = 0
+
+    for sub in subs:
+        checked += 1
+        try:
+            xui_expiry_ms = await xui_client.xui_get_expiry_ms(sub.client_email)
+            if xui_expiry_ms is None:
+                mismatches.append((sub, "нет в 3x-ui"))
+                continue
+
+            db_expiry_s = int(sub.end_date.timestamp())
+            xui_expiry_s = xui_expiry_ms // 1000
+
+            diff = abs(db_expiry_s - xui_expiry_s)
+            if diff > 120:
+                mismatches.append((sub, f"расхождение {diff // 60} мин"))
+        except Exception:
+            errors += 1
+
+    text = (
+        f"<b>🔍 Результат проверки</b>\n\n"
+        f"Проверено: {checked}\n"
+        f"Расхождений: {len(mismatches)}\n"
+        f"Ошибок: {errors}\n"
+    )
+
+    if mismatches:
+        text += "\n<b>Расхождения:</b>\n"
+        for sub, reason in mismatches[:10]:
+            text += f"• {sub.client_email} — {reason}\n"
+        if len(mismatches) > 10:
+            text += f"  ... и ещё {len(mismatches) - 10}\n"
+
+        builder = InlineKeyboardBuilder()
+        builder.row(InlineKeyboardButton(
+            text="🛠 Исправить все", callback_data="admin_fix_confirm"
+        ))
+        builder.row(InlineKeyboardButton(text="← К админке", callback_data="admin"))
+        await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    else:
+        await callback.message.edit_text(
+            text + "\n✅ Все подписки синхронизированы.",
+            reply_markup=back_button("admin"),
+        )
+
+
+@router.callback_query(F.data == "admin_fix_confirm")
+async def admin_fix_confirm(callback: types.CallbackQuery):
+    if not await is_admin(callback.from_user.id):
+        return await callback.answer("⛔", show_alert=True)
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(
+        text="✅ Да, исправить", callback_data="admin_fix_do"
+    ))
+    builder.row(InlineKeyboardButton(text="← Назад", callback_data="admin_check"))
+    await callback.message.edit_text(
+        "⚠️ <b>Исправить все расхождения?</b>\n\n"
+        "Бот обновит expiryTime в 3x-ui по данным из базы.\n"
+        "Отменить будет нельзя.",
+        reply_markup=builder.as_markup(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_fix_do")
+async def admin_fix_do(callback: types.CallbackQuery):
+    if not await is_admin(callback.from_user.id):
+        return await callback.answer("⛔", show_alert=True)
+
+    await callback.message.edit_text("🛠 Исправляю... Подождите.")
+    await callback.answer()
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(Subscription).where(Subscription.is_active == True)
+        )
+        subs = result.scalars().all()
+
+    fixed = 0
+    errors = 0
+
+    for sub in subs:
+        try:
+            found = await xui_client.find_client_by_email(sub.client_email)
+            if not found:
+                errors += 1
+                continue
+
+            xui_expiry = found["client"].get("expiryTime", 0)
+            db_expiry = int(sub.end_date.timestamp() * 1000)
+
+            if abs(xui_expiry - db_expiry) > 120_000:
+                await xui_client.xui_update_expiry(
+                    inbound_id=found["inbound_id"],
+                    client_id=found["client"]["id"],
+                    expiry_ms=db_expiry,
+                    devices=sub.devices_count,
+                )
+                fixed += 1
+        except Exception:
+            errors += 1
+
+    text = (
+        f"<b>🛠 Исправление завершено</b>\n\n"
+        f"✅ Исправлено: {fixed}\n"
+        f"❌ Ошибок: {errors}"
+    )
+    await callback.message.edit_text(text, reply_markup=back_button("admin"))
