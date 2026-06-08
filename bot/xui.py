@@ -35,11 +35,11 @@ class XUIClient:
         return data
 
     async def get_inbounds(self) -> list[dict]:
-        data = await self._request("GET", "/panel/api/inbounds/list")
+        data = await self._request("GET", "/api/inbounds/list")
         return data.get("obj", [])
 
     async def get_inbound(self, inbound_id: int) -> dict:
-        data = await self._request("GET", f"/panel/api/inbounds/get/{inbound_id}")
+        data = await self._request("GET", f"/api/inbounds/get/{inbound_id}")
         return data.get("obj", {})
 
     async def add_client(self, inbound_id: int, email: str, days: int,
@@ -62,7 +62,7 @@ class XUIClient:
             "id": inbound_id,
             "settings": {"clients": [client]},
         }
-        data = await self._request("POST", "/panel/api/inbounds/addClient", json=payload)
+        data = await self._request("POST", "/api/inbounds/addClient", json=payload)
         return data
 
     async def update_client(self, inbound_id: int, client_uuid: str,
@@ -82,19 +82,19 @@ class XUIClient:
                 }]
             },
         }
-        data = await self._request("POST", f"/panel/api/inbounds/updateClient/{client_uuid}", json=payload)
+        data = await self._request("POST", f"/api/inbounds/updateClient/{client_uuid}", json=payload)
         return data
 
     async def delete_client(self, inbound_id: int, client_uuid: str) -> dict:
-        data = await self._request("POST", f"/panel/api/inbounds/{inbound_id}/delClient/{client_uuid}")
+        data = await self._request("POST", f"/api/inbounds/{inbound_id}/delClient/{client_uuid}")
         return data
 
     async def get_client_traffic(self, email: str) -> dict:
-        data = await self._request("GET", f"/panel/api/inbounds/getClientTraffics/{email}")
+        data = await self._request("GET", f"/api/inbounds/getClientTraffics/{email}")
         return data.get("obj", {})
 
     async def get_online_clients(self) -> list[str]:
-        data = await self._request("POST", "/panel/api/inbounds/onlines")
+        data = await self._request("POST", "/api/inbounds/onlines")
         return data.get("obj", [])
 
     async def enable_client(self, inbound_id: int, client_uuid: str,
@@ -112,7 +112,7 @@ class XUIClient:
                 }]
             },
         }
-        data = await self._request("POST", f"/panel/api/inbounds/updateClient/{client_uuid}", json=payload)
+        data = await self._request("POST", f"/api/inbounds/updateClient/{client_uuid}", json=payload)
         return data
 
     async def disable_client(self, inbound_id: int, client_uuid: str) -> dict:
@@ -125,11 +125,11 @@ class XUIClient:
                 }]
             },
         }
-        data = await self._request("POST", f"/panel/api/inbounds/updateClient/{client_uuid}", json=payload)
+        data = await self._request("POST", f"/api/inbounds/updateClient/{client_uuid}", json=payload)
         return data
 
     async def delete_depleted(self, inbound_id: int) -> dict:
-        data = await self._request("POST", f"/panel/api/inbounds/delDepletedClients/{inbound_id}")
+        data = await self._request("POST", f"/api/inbounds/delDepletedClients/{inbound_id}")
         return data
 
     async def find_client_by_email(self, email: str) -> dict | None:
@@ -170,7 +170,7 @@ class XUIClient:
             },
         }
         data = await self._request(
-            "POST", f"/panel/api/inbounds/updateClient/{client_id}", json=payload
+            "POST", f"/api/inbounds/updateClient/{client_id}", json=payload
         )
         return data
 
