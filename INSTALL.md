@@ -60,7 +60,7 @@ nano .env
 | `XUI_URL` | `https://127.0.0.1:2053` (или твой IP/домен) |
 | `XUI_TOKEN` | Токен из 3x-ui (Settings → Security → API Token) |
 | `XUI_INSECURE=true` | Оставить `true`, если самоподписной сертификат |
-| `XUI_BASE_PATH` | Web Base Path из 3x-ui Settings → General (по умолч. `/panel`) |
+| `XUI_BASE_PATH` | Web Base Path из 3x-ui Settings → General (если есть свой путь) |
 | `YOOKASSA_SHOP_ID` | Из личного кабинета ЮKassa |
 | `YOOKASSA_SECRET_KEY` | Секретный ключ ЮKassa |
 | `YOOKASSA_RETURN_URL` | `https://t.me/твой_бот` |
