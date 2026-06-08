@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database import async_session
 from bot.models import User
+from bot.config import settings
 from bot.keyboards import main_menu
 
 router = Router()
@@ -24,6 +25,10 @@ async def get_or_create_user(tg_id: int, username: str | None,
             session.add(user)
             await session.commit()
             await session.refresh(user)
+
+        if tg_id in settings.admin_ids and not user.is_admin:
+            user.is_admin = True
+            await session.commit()
         return user
 
 
