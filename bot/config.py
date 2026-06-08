@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     xui_url: str
     xui_token: str
     xui_insecure: bool = True
+    xui_base_path: str = "/panel"
 
     # ЮKassa
     yookassa_shop_id: str

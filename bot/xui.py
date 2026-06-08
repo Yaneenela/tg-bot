@@ -9,6 +9,7 @@ from bot.config import settings
 class XUIClient:
     def __init__(self):
         self.base_url = settings.xui_url.rstrip("/")
+        self.base_path = settings.xui_base_path.rstrip("/")
         self.token = settings.xui_token
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
@@ -20,9 +21,13 @@ class XUIClient:
     async def close(self):
         await self.client.aclose()
 
+    def _api_path(self, path: str) -> str:
+        return f"{self.base_path}{path}"
+
     async def _request(self, method: str, path: str, **kwargs) -> dict:
         kwargs.setdefault("headers", self._headers)
-        resp = await self.client.request(method, path, **kwargs)
+        full_path = self._api_path(path)
+        resp = await self.client.request(method, full_path, **kwargs)
         resp.raise_for_status()
         data: dict = resp.json()
         if not data.get("success"):
